@@ -96,6 +96,9 @@ export function sampleProject(): Project {
   };
 }
 
+/** The simulation keeps gold for every run and step in memory; this keeps it under ~40 MB. */
+export const MAX_RUN_STEPS = 5_000_000;
+
 export interface Problem {
   level: 'error' | 'warning';
   message: string;
@@ -176,6 +179,8 @@ export function problems(p: Project): Problem[] {
   const s = p.scenario;
   if (!Number.isInteger(s.steps) || s.steps < 1) error(`The number of ${s.stepName}s must be a whole number of at least 1.`);
   if (!Number.isInteger(s.runs) || s.runs < 1) error('The number of runs must be a whole number of at least 1.');
+  if (s.runs * s.steps > MAX_RUN_STEPS)
+    error(`Runs × ${s.stepName}s is over ${MAX_RUN_STEPS.toLocaleString('en')}; lower one of them.`);
   if (!(s.upkeep >= 0)) error('Upkeep cannot be negative.');
   if (s.encounters.length === 0) warning(`Nothing drops in the simulation: add what the player meets each ${s.stepName}.`);
   for (const e of s.encounters) {

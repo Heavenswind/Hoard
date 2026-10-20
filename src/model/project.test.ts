@@ -55,6 +55,12 @@ describe('project', () => {
     ]);
   });
 
+  it('refuses simulations too big to keep in memory', () => {
+    const p = sampleProject();
+    p.scenario.runs = 200_000;
+    expect(messages(p)).toEqual(['error: Runs × fights is over 5,000,000; lower one of them.']);
+  });
+
   it('warns about tables that can never drop anything', () => {
     const p = sampleProject();
     p.tables[2].entries.forEach((e) => (e.weight = 0));
