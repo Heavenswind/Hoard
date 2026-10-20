@@ -1,0 +1,15 @@
+node_modules/
+dist/
+coverage/
+*.log
+
+# Secrets & local settings — never commit
+.env
+.env.*
+!.env.example
+.claude/settings.local.json
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+.vscode/
