@@ -123,6 +123,42 @@ table.rates td { padding: 6px; }
 .status-icon.warning { background: var(--warning); }
 .status-icon.error { background: var(--critical); color: #fff; }
 
+.results { transition: opacity 0.15s; }
+.results.stale { opacity: 0.55; }
+.results h3 { margin-top: 10px; }
+.results .note { margin-top: -4px; }
+
+.tiles { display: flex; gap: 10px; flex-wrap: wrap; }
+.tile { flex: 1; min-width: 200px; background: var(--panel-2); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
+.tile span { font-size: 12px; }
+.tile strong { font-size: 26px; font-weight: 600; }
+
+.chart { display: flex; flex-direction: column; gap: 6px; }
+.chart .plot { position: relative; border-radius: 6px; }
+.chart .plot:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
+.chart svg { display: block; }
+.chart svg text { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.chart .gridlines line { stroke: var(--grid); stroke-width: 1; shape-rendering: crispEdges; }
+.chart .gridlines line.baseline { stroke: var(--axis); }
+.chart svg text.end-label { fill: var(--text); font-weight: 600; }
+.chart svg text.marker-label { fill: var(--text-2); }
+.chart .crosshair line { stroke: var(--muted); stroke-width: 1; shape-rendering: crispEdges; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--text-2); }
+.key { display: inline-block; width: 14px; height: 2px; border-radius: 1px; vertical-align: middle; margin-right: 6px; }
+.key.band { height: 8px; opacity: 0.45; }
+.tooltip {
+  position: absolute; pointer-events: none; z-index: 2; min-width: 170px;
+  background: #101217; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px;
+  font-size: 12px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+.tip-title { color: var(--muted); margin-bottom: 4px; }
+.tip-row { display: flex; align-items: center; gap: 6px; line-height: 1.6; }
+.tip-row .key { margin-right: 0; }
+.tip-row strong { color: var(--text); font-variant-numeric: tabular-nums; }
+.tip-row span { color: var(--muted); }
+.table-view summary { cursor: pointer; font-size: 12px; color: var(--muted); }
+.table-view .table-scroll { max-height: 240px; overflow-y: auto; margin-top: 6px; }
+
 @media (max-width: 1100px) {
   body { overflow: auto; }
   .app { height: auto; min-height: 100vh; }

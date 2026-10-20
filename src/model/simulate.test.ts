@@ -45,6 +45,17 @@ describe('simulation', () => {
       [6, 6, 0],
     ]);
     expect(r.goals[1].byStep).toEqual([0, 0, 0, 0, 0, 1, 1, 1]);
+    expect(r.allGoals).toEqual({ byStep: [0, 0, 0, 0, 0, 1, 1, 1], step50: 6 });
+  });
+
+  it('only counts runs with every goal as having them all', () => {
+    const p = fixedIncome();
+    p.scenario.goals.push({ id: 'g3', itemId: 'helm', price: 1000 });
+    const r = simulate(p);
+    expect(r.goals[1].step50).toBe(6);
+    expect(r.allGoals).toEqual({ byStep: [0, 0, 0, 0, 0, 0, 0, 0], step50: null });
+    p.scenario.goals = [];
+    expect(simulate(p).allGoals).toEqual({ byStep: [], step50: null });
   });
 
   it('counts a goal as reached when the item drops first, and skips buying it', () => {

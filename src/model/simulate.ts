@@ -37,6 +37,8 @@ export interface SimResult {
   gold: Percentiles;
   items: ItemResult[];
   goals: GoalResult[];
+  /** When runs have every goal at once. Empty byStep when there are no goals. */
+  allGoals: { byStep: number[]; step50: number | null };
 }
 
 const ITEM = 0;
@@ -180,6 +182,17 @@ export function simulate(p: Project): SimResult {
     }
   }
 
+  // A run has every goal at the latest of its goal steps, or never if one is missing.
+  const allStep = new Int32Array(runs).fill(-1);
+  if (goals.length > 0) {
+    for (let r = 0; r < runs; r++) {
+      let latest = 0;
+      for (const reached of goalStep) latest = reached[r] < 0 || latest < 0 ? -1 : Math.max(latest, reached[r]);
+      allStep[r] = latest;
+    }
+  }
+  const allByStep = goals.length > 0 ? cumulative(allStep, steps) : [];
+
   const goldStats: Percentiles = { p10: [], p50: [], p90: [], mean: [] };
   for (let s = 0; s < steps; s++) {
     const column = goldAt.slice(s * runs, (s + 1) * runs).sort();
@@ -216,5 +229,6 @@ export function simulate(p: Project): SimResult {
         viaDrop: goalViaDrop[n] / runs,
       };
     }),
+    allGoals: { byStep: allByStep, step50: firstStepReaching(allByStep, 0.5) },
   };
 }
