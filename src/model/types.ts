@@ -1,0 +1,84 @@
+// A project is a set of items, the loot tables that drop them, and one scenario to simulate.
+// Everything is plain JSON so a game can load the same tables it was balanced with.
+
+/** Id of the built-in currency. Every project has it; upkeep and shop prices are paid in it. */
+export const GOLD = 'gold';
+
+export interface Item {
+  id: string;
+  name: string;
+  /** Gold the player gets for selling one. */
+  value: number;
+  /** Sell every copy as soon as it drops (vendor trash). */
+  autoSell: boolean;
+}
+
+/** Inclusive integer range; every value in it is equally likely. */
+export interface Range {
+  min: number;
+  max: number;
+}
+
+export type Outcome =
+  | { kind: 'item'; itemId: string; qty: Range }
+  | { kind: 'table'; tableId: string }
+  | { kind: 'nothing' };
+
+export interface Entry {
+  id: string;
+  /** Relative weight in a 'weighted' table; percent chance (0–100) in an 'each' table. */
+  weight: number;
+  outcome: Outcome;
+}
+
+/**
+ * weighted: each roll picks exactly one entry, in proportion to the weights.
+ * each: each roll checks every entry against its own chance, so one roll can give several entries or none.
+ */
+export type TableMode = 'weighted' | 'each';
+
+export interface LootTable {
+  id: string;
+  name: string;
+  mode: TableMode;
+  rolls: Range;
+  entries: Entry[];
+}
+
+/** Something the player meets every step, e.g. 3 goblins per fight. */
+export interface Encounter {
+  id: string;
+  tableId: string;
+  count: number;
+}
+
+/**
+ * An item the player is saving up for. It's bought for `price` gold once affordable, unless it drops first.
+ * Purchases happen in list order: the player saves for the first goal they don't have yet.
+ */
+export interface Goal {
+  id: string;
+  itemId: string;
+  price: number;
+}
+
+export interface Scenario {
+  /** What one step is called in the UI: fight, run, day… */
+  stepName: string;
+  steps: number;
+  runs: number;
+  seed: number;
+  encounters: Encounter[];
+  /** Gold spent every step (food, repairs). Gold never goes below zero. */
+  upkeep: number;
+  goals: Goal[];
+}
+
+export interface Project {
+  format: 'hoard';
+  version: 1;
+  name: string;
+  items: Item[];
+  tables: LootTable[];
+  scenario: Scenario;
+}
