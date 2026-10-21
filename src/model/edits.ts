@@ -88,7 +88,11 @@ export function updateQty(p: Project, tableId: string, entryId: string, patch: P
 }
 
 export function removeEntry(p: Project, tableId: string, entryId: string): Project {
-  return updateTable(p, tableId, (t) => ({ ...t, entries: t.entries.filter((e) => e.id !== entryId) }));
+  return updateTable(p, tableId, (t) => ({
+    ...t,
+    entries: t.entries.filter((e) => e.id !== entryId),
+    pity: t.pity?.entryId === entryId ? undefined : t.pity,
+  }));
 }
 
 export function moveEntry(p: Project, tableId: string, entryId: string, by: -1 | 1): Project {

@@ -61,6 +61,12 @@ interface CompiledTable {
   rollMax: number;
   total: number;
   entries: CompiledEntry[];
+  /** Bad-luck protection: index of the guaranteed entry, or -1. */
+  pity: number;
+  /** Misses before the guarantee kicks in. */
+  pityAfter: number;
+  /** Rolls since the pity entry last hit; reset at the start of every run. */
+  misses: number;
 }
 
 function compile(p: Project): CompiledTable[] {
@@ -81,7 +87,17 @@ function compile(p: Project): CompiledTable[] {
         table: o.kind === 'table' ? tableIndex.get(o.tableId)! : -1,
       };
     });
-    return { each: t.mode === 'each', rollMin: t.rolls.min, rollMax: t.rolls.max, total: cumulative, entries };
+    const pity = t.mode === 'weighted' && t.pity ? t.entries.findIndex((e) => e.id === t.pity!.entryId) : -1;
+    return {
+      each: t.mode === 'each',
+      rollMin: t.rolls.min,
+      rollMax: t.rolls.max,
+      total: cumulative,
+      entries,
+      pity,
+      pityAfter: pity >= 0 ? t.pity!.after : 0,
+      misses: 0,
+    };
   });
 }
 
@@ -147,9 +163,14 @@ export function simulate(p: Project): SimResult {
     for (let r = 0; r < rolls; r++) {
       if (t.each) {
         for (const e of t.entries) if (next() < e.threshold) apply(e);
-      } else if (t.total > 0) {
-        const x = next() * t.total;
-        const e = t.entries.find((e) => x < e.threshold);
+      } else {
+        let e: CompiledEntry | undefined;
+        if (t.pity >= 0 && t.misses >= t.pityAfter) e = t.entries[t.pity];
+        else if (t.total > 0) {
+          const x = next() * t.total;
+          e = t.entries.find((e) => x < e.threshold);
+        }
+        if (t.pity >= 0) t.misses = e === t.entries[t.pity] ? 0 : t.misses + 1;
         if (e) apply(e);
       }
     }
@@ -157,6 +178,7 @@ export function simulate(p: Project): SimResult {
 
   for (run = 0; run < runs; run++) {
     inventory.fill(0);
+    for (const t of tables) t.misses = 0;
     let saving = 0; // the goal the player is currently saving for
     for (step = 0; step < steps; step++) {
       for (const enc of encounters) for (let c = 0; c < enc.count; c++) drop(tables[enc.table]);

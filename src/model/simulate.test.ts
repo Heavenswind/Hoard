@@ -85,6 +85,23 @@ describe('simulation', () => {
     expect(simulate(p).goals[0]).toMatchObject({ step50: null, step90: null, viaDrop: 0 });
   });
 
+  it('honours bad-luck protection and matches its exact long-run rate', () => {
+    const p = fixedIncome();
+    p.scenario = { ...p.scenario, steps: 50, runs: 500, goals: [] };
+    p.tables[0].entries = [
+      { id: 'g', weight: 99, outcome: { kind: 'item', itemId: GOLD, qty: { min: 1, max: 1 } } },
+      { id: 'h', weight: 1, outcome: { kind: 'item', itemId: 'helm', qty: { min: 1, max: 1 } } },
+    ];
+    p.tables[0].pity = { entryId: 'h', after: 9 };
+    const r = simulate(p);
+    const helm = r.items.find((i) => i.itemId === 'helm')!;
+    // One roll per step, guaranteed at latest on the 10th: every run has a helm by step 10.
+    expect(helm.byStep[9]).toBe(1);
+    const exact = stepRates(p).items.get('helm')!.expected;
+    expect(helm.total.mean / 50 / exact).toBeGreaterThan(0.9);
+    expect(helm.total.mean / 50 / exact).toBeLessThan(1.1);
+  });
+
   it('repeats exactly with the same seed', () => {
     const p = sampleProject();
     p.scenario.runs = 200;

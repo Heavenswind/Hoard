@@ -37,12 +37,22 @@ export interface Entry {
  */
 export type TableMode = 'weighted' | 'each';
 
+/**
+ * Bad-luck protection, for weighted tables only. After `after` rolls of the table in a row
+ * without the entry being picked, the next roll gives it instead of a weighted pick.
+ */
+export interface Pity {
+  entryId: string;
+  after: number;
+}
+
 export interface LootTable {
   id: string;
   name: string;
   mode: TableMode;
   rolls: Range;
   entries: Entry[];
+  pity?: Pity;
 }
 
 /** Something the player meets every step, e.g. 3 goblins per fight. */

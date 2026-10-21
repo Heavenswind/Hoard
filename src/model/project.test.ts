@@ -55,6 +55,18 @@ describe('project', () => {
     ]);
   });
 
+  it('validates bad-luck protection', () => {
+    const p = sampleProject();
+    p.tables[0].pity = { entryId: 'g5', after: 50 };
+    p.tables[1].pity = { entryId: 'w1', after: 3 };
+    p.tables[2].pity = { entryId: 'gone', after: 0.5 };
+    expect(messages(p)).toEqual([
+      'error: Wolf: bad-luck protection only works when each roll picks one entry by weight.',
+      'error: Rare finds: bad-luck protection guarantees an entry that no longer exists.',
+      'error: Rare finds: bad-luck protection needs a whole number of misses, 1 or more.',
+    ]);
+  });
+
   it('refuses simulations too big to keep in memory', () => {
     const p = sampleProject();
     p.scenario.runs = 200_000;

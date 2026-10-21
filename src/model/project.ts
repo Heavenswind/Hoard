@@ -150,6 +150,13 @@ export function problems(p: Project): Problem[] {
   for (const t of p.tables) {
     const rolls = rangeProblem(t.rolls);
     if (rolls) error(`${t.name}: rolls ${rolls}.`, t.id);
+    if (t.pity) {
+      if (t.mode === 'each') error(`${t.name}: bad-luck protection only works when each roll picks one entry by weight.`, t.id);
+      if (!t.entries.some((e) => e.id === t.pity!.entryId))
+        error(`${t.name}: bad-luck protection guarantees an entry that no longer exists.`, t.id);
+      if (!Number.isInteger(t.pity.after) || t.pity.after < 1)
+        error(`${t.name}: bad-luck protection needs a whole number of misses, 1 or more.`, t.id);
+    }
     if (t.entries.length === 0) warning(`${t.name} has no entries, so it never drops anything.`, t.id);
     else if (t.mode === 'weighted' && t.entries.every((e) => e.weight === 0))
       warning(`${t.name}: every weight is 0, so it never drops anything.`, t.id);
@@ -223,6 +230,12 @@ export function assertProject(data: unknown): asserts data is Project {
     check(typeof t?.id === 'string' && typeof t.name === 'string', path, 'needs an id and a name');
     check(t.mode === 'weighted' || t.mode === 'each', `${path}.mode`, 'must be "weighted" or "each"');
     checkRange(t.rolls, `${path}.rolls`);
+    if (t.pity !== undefined)
+      check(
+        typeof t.pity === 'object' && t.pity !== null && typeof t.pity.entryId === 'string' && typeof t.pity.after === 'number',
+        `${path}.pity`,
+        'needs entryId and after',
+      );
     check(Array.isArray(t.entries), `${path}.entries`, 'is not a list');
     t.entries.forEach((e, k) => {
       const at = `${path}.entries[${k}]`;

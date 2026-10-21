@@ -18,11 +18,24 @@ function chancePositive(r: Range): number {
   return (r.max - Math.max(r.min, 1) + 1) / (r.max - r.min + 1);
 }
 
-/** Probability of each entry in a single roll: its share of the total weight, or its own chance. */
+/**
+ * Probability of each entry in a single roll: its share of the total weight, or its own chance.
+ * With bad-luck protection these are long-run averages: the guaranteed entry's rate rises to
+ * 1 / E[rolls between hits], and the forced rolls displace everyone else proportionally.
+ */
 export function entryChances(t: LootTable): number[] {
   if (t.mode === 'each') return t.entries.map((e) => Math.min(Math.max(e.weight, 0) / 100, 1));
   const total = t.entries.reduce((sum, e) => sum + Math.max(e.weight, 0), 0);
-  return t.entries.map((e) => (total > 0 ? Math.max(e.weight, 0) / total : 0));
+  const base = t.entries.map((e) => (total > 0 ? Math.max(e.weight, 0) / total : 0));
+  const k = t.pity ? t.entries.findIndex((e) => e.id === t.pity!.entryId) : -1;
+  if (k < 0 || !Number.isInteger(t.pity!.after) || t.pity!.after < 1) return base;
+  // The entry hits at latest every N rolls. Renewal cycle: E[T] = (1 - q^N) / p, forced ending with q^(N-1).
+  const n = t.pity!.after + 1;
+  const p = base[k];
+  const q = 1 - p;
+  const expectedGap = p > 0 ? (1 - q ** n) / p : n;
+  const forcedShare = q ** (n - 1) / expectedGap;
+  return base.map((b, i) => (i === k ? 1 / expectedGap : b * (1 - forcedShare)));
 }
 
 class Calculator {

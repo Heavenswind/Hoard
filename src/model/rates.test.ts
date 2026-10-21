@@ -73,6 +73,32 @@ describe('drop rates', () => {
     expect(Number.isFinite(gem.expected) && gem.chance >= 0 && gem.chance <= 1).toBe(true);
   });
 
+  it('raises a guaranteed entry to its renewal rate and keeps the shares summing to 1', () => {
+    const t = table('t', 'weighted', [1, 1], [item(1, 'gem'), nothing(9)]);
+    t.pity = { entryId: t.entries[0].id, after: 9 };
+    const chances = entryChances(t);
+    // p = 0.1, guaranteed at latest on the 10th roll: long-run rate p / (1 - 0.9^10) ≈ 0.154.
+    expect(chances[0]).toBeCloseTo(0.1 / (1 - 0.9 ** 10), 12);
+    expect(chances[0] + chances[1]).toBeCloseTo(1, 12);
+    expect(chances[0]).toBeGreaterThan(0.1);
+  });
+
+  it('guarantees a zero-weight entry exactly once per pity cycle', () => {
+    const t = table('t', 'weighted', [1, 1], [item(0, 'gem'), item(1, GOLD)]);
+    t.pity = { entryId: t.entries[0].id, after: 4 };
+    const chances = entryChances(t);
+    expect(chances[0]).toBeCloseTo(1 / 5, 12);
+    expect(chances[1]).toBeCloseTo(4 / 5, 12);
+  });
+
+  it('ignores bad-luck protection that points nowhere or has a bad miss count', () => {
+    const t = table('t', 'weighted', [1, 1], [item(1, 'gem'), nothing(1)]);
+    t.pity = { entryId: 'missing', after: 5 };
+    expect(entryChances(t)).toEqual([0.5, 0.5]);
+    t.pity = { entryId: t.entries[0].id, after: 0 };
+    expect(entryChances(t)).toEqual([0.5, 0.5]);
+  });
+
   it('adds up a whole step of the sample scenario, auto-sold items included', () => {
     const r = stepRates(sampleProject());
     // Goblin roll in gold: (50×4 + 25×2 + 8×9 + 2×0.85×45) / 110; ×1.5 rolls ×3 goblins. Wolf: 0.7×6 + 0.35×1.5×3 + 0.2×2.
