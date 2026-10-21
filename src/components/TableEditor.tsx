@@ -9,6 +9,13 @@ import { NumberInput, TextInput } from './fields';
 
 const outcomeKey = (o: Outcome) => (o.kind === 'item' ? `item:${o.itemId}` : o.kind === 'table' ? `table:${o.tableId}` : 'nothing');
 
+/** What an entry drops, for the bad-luck protection picker. */
+function outcomeName(project: Project, o: Outcome): string {
+  if (o.kind === 'item') return project.items.find((i) => i.id === o.itemId)?.name ?? '(deleted)';
+  if (o.kind === 'table') return `→ ${project.tables.find((t) => t.id === o.tableId)?.name ?? '(deleted)'}`;
+  return 'Nothing';
+}
+
 function OutcomeSelect({ project, table, outcome, onChange }: { project: Project; table: LootTable; outcome: Outcome; onChange: (o: Outcome) => void }) {
   const key = outcomeKey(outcome);
   const known = key === 'nothing' || project.items.some((i) => key === `item:${i.id}`) || project.tables.some((t) => key === `table:${t.id}`);
@@ -92,6 +99,7 @@ function DropRates({ project, table }: { project: Project; table: LootTable }) {
           <p className="muted note">
             Worth about <strong className="ink">{num(worth)} gold</strong> per drop, counting every item at its sell value. Exact
             numbers, nested tables included.
+            {table.pity && ' With bad-luck protection these are long-run averages.'}
           </p>
         </>
       )}
@@ -131,7 +139,14 @@ function TableCard({ project, table }: { project: Project; table: LootTable }) {
       <div className="table-settings">
         <label>
           Each roll
-          <select aria-label="Table mode" value={table.mode} onChange={(e) => set((t) => ({ ...t, mode: e.target.value as TableMode }))}>
+          <select
+            aria-label="Table mode"
+            value={table.mode}
+            onChange={(e) => {
+              const mode = e.target.value as TableMode;
+              set((t) => ({ ...t, mode, pity: mode === 'each' ? undefined : t.pity }));
+            }}
+          >
             <option value="weighted">picks one entry by weight</option>
             <option value="each">checks every entry's own chance</option>
           </select>
@@ -156,6 +171,40 @@ function TableCard({ project, table }: { project: Project; table: LootTable }) {
             onChange={(max) => set((t) => ({ ...t, rolls: { ...t.rolls, max } }), `rolls-max-${table.id}`)}
           />
         </label>
+        {!each && (
+          <label>
+            Guarantee
+            <select
+              aria-label="Bad-luck protection entry"
+              value={table.pity?.entryId ?? ''}
+              onChange={(e) => {
+                const entryId = e.target.value;
+                set((t) => ({ ...t, pity: entryId ? { entryId, after: t.pity?.after ?? 10 } : undefined }));
+              }}
+            >
+              <option value="">nothing</option>
+              {table.entries.map((e) => (
+                <option key={e.id} value={e.id}>
+                  {outcomeName(project, e.outcome)}
+                </option>
+              ))}
+            </select>
+            {table.pity && (
+              <>
+                after
+                <NumberInput
+                  className="short"
+                  aria-label="Misses before the guarantee"
+                  min={1}
+                  step={1}
+                  value={table.pity.after}
+                  onChange={(after) => set((t) => (t.pity ? { ...t, pity: { ...t.pity, after } } : t), `pity-after-${table.id}`)}
+                />
+                misses
+              </>
+            )}
+          </label>
+        )}
       </div>
 
       <table className="grid entries">
