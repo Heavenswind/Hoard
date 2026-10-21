@@ -38,6 +38,6 @@ Work I plan to do, roughly in order. Effort estimates are rough.
 
 - [ ] Component tests for the table editor and the charts
 - [ ] File format migrations when the version number changes
-- [ ] GitHub Actions: typecheck, test and build on every push
+- [x] GitHub Actions: typecheck, test and build on every push
 - [ ] Deploy the app to GitHub Pages
 - [ ] Narrow-screen layout and a light theme
