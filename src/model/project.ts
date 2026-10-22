@@ -152,18 +152,20 @@ export function problems(p: Project): Problem[] {
     if (rolls) error(`${t.name}: rolls ${rolls}.`, t.id);
     if (t.pity) {
       if (t.mode === 'each') error(`${t.name}: bad-luck protection only works when each roll picks one entry by weight.`, t.id);
-      if (!t.entries.some((e) => e.id === t.pity!.entryId))
-        error(`${t.name}: bad-luck protection guarantees an entry that no longer exists.`, t.id);
+      const guarded = t.entries.find((e) => e.id === t.pity!.entryId);
+      if (!guarded) error(`${t.name}: bad-luck protection guarantees an entry that no longer exists.`, t.id);
+      else if (guarded.always) error(`${t.name}: bad-luck protection guarantees an entry that already drops every roll.`, t.id);
       if (!Number.isInteger(t.pity.after) || t.pity.after < 1)
         error(`${t.name}: bad-luck protection needs a whole number of misses, 1 or more.`, t.id);
     }
     if (t.entries.length === 0) warning(`${t.name} has no entries, so it never drops anything.`, t.id);
-    else if (t.mode === 'weighted' && t.entries.every((e) => e.weight === 0))
+    else if (t.mode === 'weighted' && !t.entries.some((e) => e.always) && t.entries.every((e) => e.weight === 0))
       warning(`${t.name}: every weight is 0, so it never drops anything.`, t.id);
 
     t.entries.forEach((e, n) => {
       const where = `${t.name}, entry ${n + 1}`;
       if (!(e.weight >= 0)) error(`${where}: ${t.mode === 'each' ? 'chance' : 'weight'} cannot be negative.`, t.id);
+      if (e.always && t.mode === 'each') error(`${where}: "every roll" only works when each roll picks one entry by weight.`, t.id);
       if (t.mode === 'each' && e.weight > 100) error(`${where}: chance is above 100%.`, t.id);
       const o = e.outcome;
       if (o.kind === 'item') {
@@ -240,6 +242,7 @@ export function assertProject(data: unknown): asserts data is Project {
     t.entries.forEach((e, k) => {
       const at = `${path}.entries[${k}]`;
       check(typeof e?.id === 'string' && typeof e.weight === 'number', at, 'needs an id and a weight');
+      check(e.always === undefined || typeof e.always === 'boolean', `${at}.always`, 'is not true or false');
       const o = e.outcome;
       check(typeof o === 'object' && o !== null, `${at}.outcome`, 'is missing');
       if (o.kind === 'item') {

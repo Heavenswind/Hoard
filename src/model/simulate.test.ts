@@ -102,6 +102,25 @@ describe('simulation', () => {
     expect(helm.total.mean / 50 / exact).toBeLessThan(1.1);
   });
 
+  it('gives always-drop entries on every roll, leaving the weighted pick alone', () => {
+    const p = fixedIncome();
+    p.scenario = { ...p.scenario, steps: 20, runs: 200, goals: [] };
+    p.tables[0].entries = [
+      { id: 'g', weight: 1, outcome: { kind: 'item', itemId: GOLD, qty: { min: 10, max: 10 } } },
+      { id: 'h', weight: 3, outcome: { kind: 'item', itemId: 'helm', qty: { min: 1, max: 1 } } },
+      { id: 's', weight: 0, always: true, outcome: { kind: 'item', itemId: 'shield', qty: { min: 2, max: 2 } } },
+    ];
+    const r = simulate(p);
+    const shield = r.items.find((i) => i.itemId === 'shield')!;
+    // One roll per step, 2 shields guaranteed per roll: every run has 40 after 20 steps.
+    expect(shield.byStep[0]).toBe(1);
+    expect(shield.total.p10).toBe(40);
+    expect(shield.total.p90).toBe(40);
+    const helm = r.items.find((i) => i.itemId === 'helm')!;
+    expect(helm.total.mean / 20).toBeGreaterThan(0.65);
+    expect(helm.total.mean / 20).toBeLessThan(0.85);
+  });
+
   it('repeats exactly with the same seed', () => {
     const p = sampleProject();
     p.scenario.runs = 200;

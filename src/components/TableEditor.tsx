@@ -144,7 +144,12 @@ function TableCard({ project, table }: { project: Project; table: LootTable }) {
             value={table.mode}
             onChange={(e) => {
               const mode = e.target.value as TableMode;
-              set((t) => ({ ...t, mode, pity: mode === 'each' ? undefined : t.pity }));
+              set((t) => ({
+                ...t,
+                mode,
+                pity: mode === 'each' ? undefined : t.pity,
+                entries: mode === 'each' ? t.entries.map(({ always: _, ...rest }) => rest) : t.entries,
+              }));
             }}
           >
             <option value="weighted">picks one entry by weight</option>
@@ -183,11 +188,13 @@ function TableCard({ project, table }: { project: Project; table: LootTable }) {
               }}
             >
               <option value="">nothing</option>
-              {table.entries.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {outcomeName(project, e.outcome)}
-                </option>
-              ))}
+              {table.entries
+                .filter((e) => !e.always)
+                .map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {outcomeName(project, e.outcome)}
+                  </option>
+                ))}
             </select>
             {table.pity && (
               <>
@@ -214,6 +221,7 @@ function TableCard({ project, table }: { project: Project; table: LootTable }) {
             <th>Quantity</th>
             <th className="num">{each ? 'Chance %' : 'Weight'}</th>
             <th className="num">{each ? '' : 'Share'}</th>
+            {!each && <th>Every roll</th>}
             <th />
           </tr>
         </thead>
@@ -254,16 +262,40 @@ function TableCard({ project, table }: { project: Project; table: LootTable }) {
                 )}
               </td>
               <td className="num">
-                <NumberInput
-                  className="short"
-                  aria-label={each ? 'Chance percent' : 'Weight'}
-                  min={0}
-                  max={each ? 100 : undefined}
-                  value={e.weight}
-                  onChange={(weight) => edit((p) => updateEntry(p, table.id, e.id, { weight }), `weight-${e.id}`)}
-                />
+                {!each && e.always ? (
+                  <span className="muted" title="Ignored while the entry drops every roll">
+                    —
+                  </span>
+                ) : (
+                  <NumberInput
+                    className="short"
+                    aria-label={each ? 'Chance percent' : 'Weight'}
+                    min={0}
+                    max={each ? 100 : undefined}
+                    value={e.weight}
+                    onChange={(weight) => edit((p) => updateEntry(p, table.id, e.id, { weight }), `weight-${e.id}`)}
+                  />
+                )}
               </td>
               <td className="num muted">{each ? '' : pct(shares[n])}</td>
+              {!each && (
+                <td className="num">
+                  <input
+                    type="checkbox"
+                    aria-label="Drops every roll"
+                    title="Drops on every roll, on top of the weighted pick"
+                    checked={e.always ?? false}
+                    onChange={(ev) => {
+                      const always = ev.target.checked || undefined;
+                      set((t) => ({
+                        ...t,
+                        pity: always && t.pity?.entryId === e.id ? undefined : t.pity,
+                        entries: t.entries.map((x) => (x.id === e.id ? { ...x, always } : x)),
+                      }));
+                    }}
+                  />
+                </td>
+              )}
               <td className="row-actions">
                 <button className="icon" aria-label="Move up" disabled={n === 0} onClick={() => edit((p) => moveEntry(p, table.id, e.id, -1))}>
                   ↑

@@ -23,6 +23,9 @@ describe('project', () => {
     expect(() => assertProject(p)).toThrow('tables[0].entries[1].outcome.kind');
     p.tables[0].entries[1].outcome = { kind: 'item', itemId: 'ear' };
     expect(() => assertProject(p)).toThrow('tables[0].entries[1].outcome.qty');
+    p.tables[0].entries[1].outcome = { kind: 'item', itemId: 'ear', qty: { min: 1, max: 1 } };
+    p.tables[0].entries[1].always = 'yes';
+    expect(() => assertProject(p)).toThrow('tables[0].entries[1].always');
   });
 
   it('finds loops between nested tables, including a table that drops itself', () => {
@@ -64,6 +67,17 @@ describe('project', () => {
       'error: Wolf: bad-luck protection only works when each roll picks one entry by weight.',
       'error: Rare finds: bad-luck protection guarantees an entry that no longer exists.',
       'error: Rare finds: bad-luck protection needs a whole number of misses, 1 or more.',
+    ]);
+  });
+
+  it('validates always-drop entries', () => {
+    const p = sampleProject();
+    p.tables[0].entries[1].always = true;
+    p.tables[0].pity = { entryId: 'g2', after: 10 };
+    p.tables[1].entries[0].always = true;
+    expect(messages(p)).toEqual([
+      'error: Goblin: bad-luck protection guarantees an entry that already drops every roll.',
+      'error: Wolf, entry 1: "every roll" only works when each roll picks one entry by weight.',
     ]);
   });
 

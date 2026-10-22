@@ -91,6 +91,26 @@ describe('drop rates', () => {
     expect(chances[1]).toBeCloseTo(4 / 5, 12);
   });
 
+  it('drops always entries every roll on top of the weighted pick', () => {
+    const t = table('t', 'weighted', [1, 1], [{ ...item(0, GOLD, 5, 5), always: true }, item(1, 'gem'), nothing(3)]);
+    expect(entryChances(t)).toEqual([1, 0.25, 0.75]);
+    const p = projectWith(t);
+    expect(tableRates(p, 't').get(GOLD)).toEqual({ expected: 5, chance: 1 });
+    expect(tableRates(p, 't').get('gem')).toEqual({ expected: 0.25, chance: 0.25 });
+  });
+
+  it('keeps the pity maths over the weighted pick only, always entries untouched', () => {
+    const t = table('t', 'weighted', [1, 1], [{ ...item(2, GOLD), always: true }, item(1, 'gem'), nothing(9)]);
+    t.pity = { entryId: t.entries[1].id, after: 9 };
+    const chances = entryChances(t);
+    expect(chances[0]).toBe(1);
+    expect(chances[1]).toBeCloseTo(0.1 / (1 - 0.9 ** 10), 12);
+    expect(chances[1] + chances[2]).toBeCloseTo(1, 12);
+    // Pity pointing at an always entry is ignored; it already drops every roll.
+    t.pity = { entryId: t.entries[0].id, after: 9 };
+    expect(entryChances(t)).toEqual([1, 0.1, 0.9]);
+  });
+
   it('ignores bad-luck protection that points nowhere or has a bad miss count', () => {
     const t = table('t', 'weighted', [1, 1], [item(1, 'gem'), nothing(1)]);
     t.pity = { entryId: 'missing', after: 5 };

@@ -5,7 +5,7 @@ Work I plan to do, roughly in order. Effort estimates are rough.
 ## Loot tables (≈7 h)
 
 - [x] Bad-luck protection: guarantee an entry after N misses (pity timers), in both the exact maths and the simulation
-- [ ] "Always drops" entries alongside the weighted pick (e.g. gold on every kill plus one weighted item)
+- [x] "Always drops" entries alongside the weighted pick (e.g. gold on every kill plus one weighted item)
 - [ ] Luck / magic-find multiplier that scales chosen entries, to test gear that boosts rare drops
 - [ ] Duplicate a table, and drag to reorder entries
 - [ ] Notes per table and entry, shown in exports

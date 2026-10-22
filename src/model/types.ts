@@ -28,6 +28,8 @@ export interface Entry {
   id: string;
   /** Relative weight in a 'weighted' table; percent chance (0–100) in an 'each' table. */
   weight: number;
+  /** Weighted tables only: drops on every roll, on top of the weighted pick. The weight is ignored. */
+  always?: boolean;
   outcome: Outcome;
 }
 

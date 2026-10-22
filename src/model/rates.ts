@@ -20,22 +20,23 @@ function chancePositive(r: Range): number {
 
 /**
  * Probability of each entry in a single roll: its share of the total weight, or its own chance.
+ * Always-drop entries sit outside the weighted pick at chance 1 and don't dilute the others.
  * With bad-luck protection these are long-run averages: the guaranteed entry's rate rises to
- * 1 / E[rolls between hits], and the forced rolls displace everyone else proportionally.
+ * 1 / E[rolls between hits], and the forced rolls displace the other picked entries proportionally.
  */
 export function entryChances(t: LootTable): number[] {
   if (t.mode === 'each') return t.entries.map((e) => Math.min(Math.max(e.weight, 0) / 100, 1));
-  const total = t.entries.reduce((sum, e) => sum + Math.max(e.weight, 0), 0);
-  const base = t.entries.map((e) => (total > 0 ? Math.max(e.weight, 0) / total : 0));
+  const total = t.entries.reduce((sum, e) => sum + (e.always ? 0 : Math.max(e.weight, 0)), 0);
+  const base = t.entries.map((e) => (e.always ? 1 : total > 0 ? Math.max(e.weight, 0) / total : 0));
   const k = t.pity ? t.entries.findIndex((e) => e.id === t.pity!.entryId) : -1;
-  if (k < 0 || !Number.isInteger(t.pity!.after) || t.pity!.after < 1) return base;
+  if (k < 0 || t.entries[k].always || !Number.isInteger(t.pity!.after) || t.pity!.after < 1) return base;
   // The entry hits at latest every N rolls. Renewal cycle: E[T] = (1 - q^N) / p, forced ending with q^(N-1).
   const n = t.pity!.after + 1;
   const p = base[k];
   const q = 1 - p;
   const expectedGap = p > 0 ? (1 - q ** n) / p : n;
   const forcedShare = q ** (n - 1) / expectedGap;
-  return base.map((b, i) => (i === k ? 1 / expectedGap : b * (1 - forcedShare)));
+  return base.map((b, i) => (i === k ? 1 / expectedGap : t.entries[i].always ? b : b * (1 - forcedShare)));
 }
 
 class Calculator {
@@ -83,10 +84,14 @@ class Calculator {
     const hit = (o: Outcome) =>
       o.kind === 'item' ? (o.itemId === itemId ? chancePositive(o.qty) : 0) : o.kind === 'table' ? this.chance(o.tableId, itemId) : 0;
     const ps = entryChances(t);
-    // A weighted roll picks one entry, so the misses add up; an 'each' roll misses only if every entry misses.
+    // A weighted roll picks one entry, so those misses add up; always-drop entries miss
+    // independently, as does every entry of an 'each' roll.
     const missOneRoll =
       t.mode === 'weighted'
-        ? 1 - ps.reduce((sum, p, k) => sum + p * hit(t.entries[k].outcome), 0)
+        ? t.entries.reduce(
+            (prod, e) => (e.always ? prod * (1 - hit(e.outcome)) : prod),
+            1 - ps.reduce((sum, p, k) => sum + (t.entries[k].always ? 0 : p * hit(t.entries[k].outcome)), 0),
+          )
         : ps.reduce((prod, p, k) => prod * (1 - p * hit(t.entries[k].outcome)), 1);
     // Rolls are independent; average the miss chance over the equally likely roll counts.
     let miss = 0;

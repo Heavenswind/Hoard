@@ -2,7 +2,7 @@
 // Assumes `problems(project)` has no errors (no loops, no missing references).
 
 import { randInt, rng, type Rng } from './random';
-import { GOLD, type Project } from './types';
+import { GOLD, type Entry, type Project } from './types';
 
 export interface Percentiles {
   p10: number[];
@@ -61,7 +61,9 @@ interface CompiledTable {
   rollMax: number;
   total: number;
   entries: CompiledEntry[];
-  /** Bad-luck protection: index of the guaranteed entry, or -1. */
+  /** Weighted tables: entries that drop on every roll, outside the weighted pick. */
+  always: CompiledEntry[];
+  /** Bad-luck protection: index of the guaranteed entry in `entries`, or -1. */
   pity: number;
   /** Misses before the guarantee kicks in. */
   pityAfter: number;
@@ -73,27 +75,40 @@ function compile(p: Project): CompiledTable[] {
   const itemIndex = new Map(p.items.map((i, n) => [i.id, n]));
   const tableIndex = new Map(p.tables.map((t, n) => [t.id, n]));
   return p.tables.map((t) => {
-    let cumulative = 0;
-    const entries = t.entries.map((e): CompiledEntry => {
-      const weight = Math.max(e.weight, 0);
-      cumulative += weight;
+    const each = t.mode === 'each';
+    const toEntry = (e: Entry, threshold: number): CompiledEntry => {
       const o = e.outcome;
       return {
         kind: o.kind === 'item' ? ITEM : o.kind === 'table' ? TABLE : NOTHING,
-        threshold: t.mode === 'each' ? weight / 100 : cumulative,
+        threshold,
         item: o.kind === 'item' ? itemIndex.get(o.itemId)! : -1,
         qtyMin: o.kind === 'item' ? o.qty.min : 0,
         qtyMax: o.kind === 'item' ? o.qty.max : 0,
         table: o.kind === 'table' ? tableIndex.get(o.tableId)! : -1,
       };
-    });
-    const pity = t.mode === 'weighted' && t.pity ? t.entries.findIndex((e) => e.id === t.pity!.entryId) : -1;
+    };
+    let cumulative = 0;
+    const always: CompiledEntry[] = [];
+    const entries: CompiledEntry[] = [];
+    const pickIds: string[] = [];
+    for (const e of t.entries) {
+      const weight = Math.max(e.weight, 0);
+      if (!each && e.always) {
+        always.push(toEntry(e, 0));
+        continue;
+      }
+      cumulative += weight;
+      entries.push(toEntry(e, each ? weight / 100 : cumulative));
+      pickIds.push(e.id);
+    }
+    const pity = !each && t.pity ? pickIds.indexOf(t.pity.entryId) : -1;
     return {
-      each: t.mode === 'each',
+      each,
       rollMin: t.rolls.min,
       rollMax: t.rolls.max,
       total: cumulative,
       entries,
+      always,
       pity,
       pityAfter: pity >= 0 ? t.pity!.after : 0,
       misses: 0,
@@ -164,6 +179,7 @@ export function simulate(p: Project): SimResult {
       if (t.each) {
         for (const e of t.entries) if (next() < e.threshold) apply(e);
       } else {
+        for (const e of t.always) apply(e);
         let e: CompiledEntry | undefined;
         if (t.pity >= 0 && t.misses >= t.pityAfter) e = t.entries[t.pity];
         else if (t.total > 0) {
