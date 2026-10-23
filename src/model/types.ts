@@ -30,6 +30,8 @@ export interface Entry {
   weight: number;
   /** Weighted tables only: drops on every roll, on top of the weighted pick. The weight is ignored. */
   always?: boolean;
+  /** The scenario's luck multiplies this entry's weight (weighted) or chance (each). For rare drops boosted by gear. */
+  lucky?: boolean;
   outcome: Outcome;
 }
 
@@ -83,6 +85,8 @@ export interface Scenario {
   encounters: Encounter[];
   /** Gold spent every step (food, repairs). Gold never goes below zero. */
   upkeep: number;
+  /** Magic find from gear: multiplies the weight or chance of entries marked lucky. Missing means 1 (no effect). */
+  luck?: number;
   goals: Goal[];
 }
 

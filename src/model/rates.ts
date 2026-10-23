@@ -20,14 +20,16 @@ function chancePositive(r: Range): number {
 
 /**
  * Probability of each entry in a single roll: its share of the total weight, or its own chance.
+ * Luck multiplies the weight or chance of lucky entries, so they dilute the others like heavier gear would.
  * Always-drop entries sit outside the weighted pick at chance 1 and don't dilute the others.
  * With bad-luck protection these are long-run averages: the guaranteed entry's rate rises to
  * 1 / E[rolls between hits], and the forced rolls displace the other picked entries proportionally.
  */
-export function entryChances(t: LootTable): number[] {
-  if (t.mode === 'each') return t.entries.map((e) => Math.min(Math.max(e.weight, 0) / 100, 1));
-  const total = t.entries.reduce((sum, e) => sum + (e.always ? 0 : Math.max(e.weight, 0)), 0);
-  const base = t.entries.map((e) => (e.always ? 1 : total > 0 ? Math.max(e.weight, 0) / total : 0));
+export function entryChances(t: LootTable, luck = 1): number[] {
+  const w = (e: LootTable['entries'][number]) => Math.max(e.weight, 0) * (e.lucky ? Math.max(luck, 0) : 1);
+  if (t.mode === 'each') return t.entries.map((e) => Math.min(w(e) / 100, 1));
+  const total = t.entries.reduce((sum, e) => sum + (e.always ? 0 : w(e)), 0);
+  const base = t.entries.map((e) => (e.always ? 1 : total > 0 ? w(e) / total : 0));
   const k = t.pity ? t.entries.findIndex((e) => e.id === t.pity!.entryId) : -1;
   if (k < 0 || t.entries[k].always || !Number.isInteger(t.pity!.after) || t.pity!.after < 1) return base;
   // The entry hits at latest every N rolls. Renewal cycle: E[T] = (1 - q^N) / p, forced ending with q^(N-1).
@@ -41,12 +43,14 @@ export function entryChances(t: LootTable): number[] {
 
 class Calculator {
   private tables: Map<string, LootTable>;
+  private luck: number;
   private expectedMemo = new Map<string, Map<string, number>>();
   private chanceMemo = new Map<string, number>();
   private visiting = new Set<string>();
 
   constructor(p: Project) {
     this.tables = new Map(p.tables.map((t) => [t.id, t]));
+    this.luck = p.scenario.luck ?? 1;
   }
 
   /** Expected quantity of every item from one drop of the table. */
@@ -60,7 +64,7 @@ class Calculator {
     const out = new Map<string, number>();
     const add = (itemId: string, n: number) => out.set(itemId, (out.get(itemId) ?? 0) + n);
     const rolls = mean(t.rolls);
-    entryChances(t).forEach((p, k) => {
+    entryChances(t, this.luck).forEach((p, k) => {
       const o = t.entries[k].outcome;
       if (p === 0) return;
       if (o.kind === 'item') add(o.itemId, rolls * p * mean(o.qty));
@@ -83,7 +87,7 @@ class Calculator {
 
     const hit = (o: Outcome) =>
       o.kind === 'item' ? (o.itemId === itemId ? chancePositive(o.qty) : 0) : o.kind === 'table' ? this.chance(o.tableId, itemId) : 0;
-    const ps = entryChances(t);
+    const ps = entryChances(t, this.luck);
     // A weighted roll picks one entry, so those misses add up; always-drop entries miss
     // independently, as does every entry of an 'each' roll.
     const missOneRoll =

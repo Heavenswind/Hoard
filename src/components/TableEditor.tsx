@@ -100,6 +100,7 @@ function DropRates({ project, table }: { project: Project; table: LootTable }) {
             Worth about <strong className="ink">{num(worth)} gold</strong> per drop, counting every item at its sell value. Exact
             numbers, nested tables included.
             {table.pity && ' With bad-luck protection these are long-run averages.'}
+            {(project.scenario.luck ?? 1) !== 1 && ` Luck ×${num(project.scenario.luck!)} applied to lucky entries.`}
           </p>
         </>
       )}
@@ -111,7 +112,7 @@ function TableCard({ project, table }: { project: Project; table: LootTable }) {
   const edit = useEditor((s) => s.edit);
   const selectTable = useEditor((s) => s.selectTable);
   const usages = tableUsages(project, table.id);
-  const shares = entryChances(table);
+  const shares = entryChances(table, project.scenario.luck ?? 1);
   const each = table.mode === 'each';
   const set = (fn: (t: LootTable) => LootTable, mergeKey?: string) => edit((p) => updateTable(p, table.id, fn), mergeKey);
 
@@ -221,6 +222,7 @@ function TableCard({ project, table }: { project: Project; table: LootTable }) {
             <th>Quantity</th>
             <th className="num">{each ? 'Chance %' : 'Weight'}</th>
             <th className="num">{each ? '' : 'Share'}</th>
+            <th>Lucky</th>
             {!each && <th>Every roll</th>}
             <th />
           </tr>
@@ -278,6 +280,15 @@ function TableCard({ project, table }: { project: Project; table: LootTable }) {
                 )}
               </td>
               <td className="num muted">{each ? '' : pct(shares[n])}</td>
+              <td className="num">
+                <input
+                  type="checkbox"
+                  aria-label="Scaled by luck"
+                  title="The scenario's luck multiplier scales this entry"
+                  checked={e.lucky ?? false}
+                  onChange={(ev) => edit((p) => updateEntry(p, table.id, e.id, { lucky: ev.target.checked || undefined }))}
+                />
+              </td>
               {!each && (
                 <td className="num">
                   <input

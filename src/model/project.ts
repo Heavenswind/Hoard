@@ -166,6 +166,7 @@ export function problems(p: Project): Problem[] {
       const where = `${t.name}, entry ${n + 1}`;
       if (!(e.weight >= 0)) error(`${where}: ${t.mode === 'each' ? 'chance' : 'weight'} cannot be negative.`, t.id);
       if (e.always && t.mode === 'each') error(`${where}: "every roll" only works when each roll picks one entry by weight.`, t.id);
+      if (e.lucky && e.always) warning(`${where}: luck has no effect on an entry that drops every roll.`, t.id);
       if (t.mode === 'each' && e.weight > 100) error(`${where}: chance is above 100%.`, t.id);
       const o = e.outcome;
       if (o.kind === 'item') {
@@ -191,6 +192,9 @@ export function problems(p: Project): Problem[] {
   if (s.runs * s.steps > MAX_RUN_STEPS)
     error(`Runs × ${s.stepName}s is over ${MAX_RUN_STEPS.toLocaleString('en')}; lower one of them.`);
   if (!(s.upkeep >= 0)) error('Upkeep cannot be negative.');
+  if (s.luck !== undefined && !(s.luck >= 0)) error('Luck cannot be negative.');
+  else if (s.luck !== undefined && s.luck !== 1 && !p.tables.some((t) => t.entries.some((e) => e.lucky)))
+    warning('Luck is set but no entry is marked lucky, so it changes nothing.');
   if (s.encounters.length === 0) warning(`Nothing drops in the simulation: add what the player meets each ${s.stepName}.`);
   for (const e of s.encounters) {
     if (!tables.has(e.tableId)) error('An encounter uses a table that no longer exists.');
@@ -243,6 +247,7 @@ export function assertProject(data: unknown): asserts data is Project {
       const at = `${path}.entries[${k}]`;
       check(typeof e?.id === 'string' && typeof e.weight === 'number', at, 'needs an id and a weight');
       check(e.always === undefined || typeof e.always === 'boolean', `${at}.always`, 'is not true or false');
+      check(e.lucky === undefined || typeof e.lucky === 'boolean', `${at}.lucky`, 'is not true or false');
       const o = e.outcome;
       check(typeof o === 'object' && o !== null, `${at}.outcome`, 'is missing');
       if (o.kind === 'item') {
@@ -260,6 +265,7 @@ export function assertProject(data: unknown): asserts data is Project {
   check(typeof s.stepName === 'string', 'scenario.stepName', 'is missing');
   for (const key of ['steps', 'runs', 'seed', 'upkeep'] as const)
     check(typeof s[key] === 'number', `scenario.${key}`, 'is not a number');
+  check(s.luck === undefined || typeof s.luck === 'number', 'scenario.luck', 'is not a number');
   check(Array.isArray(s.encounters), 'scenario.encounters', 'is not a list');
   s.encounters.forEach((e, n) =>
     check(typeof e?.id === 'string' && typeof e.tableId === 'string' && typeof e.count === 'number', `scenario.encounters[${n}]`, 'is malformed'),

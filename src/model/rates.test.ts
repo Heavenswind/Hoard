@@ -111,6 +111,22 @@ describe('drop rates', () => {
     expect(entryChances(t)).toEqual([1, 0.1, 0.9]);
   });
 
+  it('scales lucky entries by the luck multiplier in both modes', () => {
+    const t = table('t', 'weighted', [1, 1], [{ ...item(1, 'gem'), lucky: true }, nothing(3)]);
+    expect(entryChances(t)).toEqual([0.25, 0.75]);
+    expect(entryChances(t, 2)).toEqual([0.4, 0.6]);
+    const e = table('t', 'each', [1, 1], [{ ...item(30, 'gem'), lucky: true }, item(80, GOLD)]);
+    expect(entryChances(e, 2)).toEqual([0.6, 0.8]);
+    expect(entryChances(e, 4)).toEqual([1, 0.8]);
+  });
+
+  it('applies the scenario luck to the exact rates', () => {
+    const p = projectWith(table('t', 'weighted', [1, 1], [{ ...item(1, 'gem'), lucky: true }, nothing(3)]));
+    expect(tableRates(p, 't').get('gem')).toEqual({ expected: 0.25, chance: 0.25 });
+    p.scenario.luck = 3;
+    expect(tableRates(p, 't').get('gem')).toEqual({ expected: 0.5, chance: 0.5 });
+  });
+
   it('ignores bad-luck protection that points nowhere or has a bad miss count', () => {
     const t = table('t', 'weighted', [1, 1], [item(1, 'gem'), nothing(1)]);
     t.pity = { entryId: 'missing', after: 5 };

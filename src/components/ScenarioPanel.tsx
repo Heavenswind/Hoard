@@ -54,6 +54,16 @@ export function ScenarioPanel() {
           />
         </label>
         <label>
+          Luck multiplier
+          <NumberInput
+            min={0}
+            step={0.1}
+            title="Magic find from gear: multiplies the weight or chance of entries marked lucky"
+            value={s.luck ?? 1}
+            onChange={(luck) => edit((p) => updateScenario(p, { luck }), 'luck')}
+          />
+        </label>
+        <label>
           Random seed
           <NumberInput step={1} value={s.seed} onChange={(seed) => edit((p) => updateScenario(p, { seed }), 'seed')} />
         </label>

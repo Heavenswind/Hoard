@@ -74,6 +74,7 @@ interface CompiledTable {
 function compile(p: Project): CompiledTable[] {
   const itemIndex = new Map(p.items.map((i, n) => [i.id, n]));
   const tableIndex = new Map(p.tables.map((t, n) => [t.id, n]));
+  const luck = Math.max(p.scenario.luck ?? 1, 0);
   return p.tables.map((t) => {
     const each = t.mode === 'each';
     const toEntry = (e: Entry, threshold: number): CompiledEntry => {
@@ -92,7 +93,7 @@ function compile(p: Project): CompiledTable[] {
     const entries: CompiledEntry[] = [];
     const pickIds: string[] = [];
     for (const e of t.entries) {
-      const weight = Math.max(e.weight, 0);
+      const weight = Math.max(e.weight, 0) * (e.lucky ? luck : 1);
       if (!each && e.always) {
         always.push(toEntry(e, 0));
         continue;

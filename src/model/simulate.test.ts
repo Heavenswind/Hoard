@@ -121,6 +121,21 @@ describe('simulation', () => {
     expect(helm.total.mean / 20).toBeLessThan(0.85);
   });
 
+  it('boosts lucky entries by the scenario luck and matches the exact rates', () => {
+    const p = fixedIncome();
+    p.scenario = { ...p.scenario, steps: 20, runs: 500, goals: [], luck: 3 };
+    p.tables[0].entries = [
+      { id: 'g', weight: 9, outcome: { kind: 'item', itemId: GOLD, qty: { min: 1, max: 1 } } },
+      { id: 'h', weight: 1, lucky: true, outcome: { kind: 'item', itemId: 'helm', qty: { min: 1, max: 1 } } },
+    ];
+    const r = simulate(p);
+    const helm = r.items.find((i) => i.itemId === 'helm')!;
+    // Effective weights 9 and 3, so the helm lands on a quarter of the rolls.
+    expect(stepRates(p).items.get('helm')!.expected).toBeCloseTo(0.25, 12);
+    expect(helm.total.mean / 20).toBeGreaterThan(0.2);
+    expect(helm.total.mean / 20).toBeLessThan(0.3);
+  });
+
   it('repeats exactly with the same seed', () => {
     const p = sampleProject();
     p.scenario.runs = 200;

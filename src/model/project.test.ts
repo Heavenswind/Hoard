@@ -81,6 +81,25 @@ describe('project', () => {
     ]);
   });
 
+  it('validates the luck multiplier and lucky entries', () => {
+    const p = sampleProject();
+    p.scenario.luck = -1;
+    expect(messages(p)).toEqual(['error: Luck cannot be negative.']);
+    p.scenario.luck = 2;
+    expect(messages(p)).toEqual(['warning: Luck is set but no entry is marked lucky, so it changes nothing.']);
+    p.tables[0].entries[4].lucky = true;
+    expect(messages(p)).toEqual([]);
+    p.tables[0].entries[4].always = true;
+    expect(messages(p)).toContain('warning: Goblin, entry 5: luck has no effect on an entry that drops every roll.');
+
+    const file = JSON.parse(JSON.stringify(sampleProject()));
+    file.scenario.luck = '2';
+    expect(() => assertProject(file)).toThrow('scenario.luck');
+    file.scenario.luck = 2;
+    file.tables[0].entries[0].lucky = 'very';
+    expect(() => assertProject(file)).toThrow('tables[0].entries[0].lucky');
+  });
+
   it('refuses simulations too big to keep in memory', () => {
     const p = sampleProject();
     p.scenario.runs = 200_000;
